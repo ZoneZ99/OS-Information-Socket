@@ -13,14 +13,30 @@ def accept_wrapper(socket: socket_lib.socket):
     data = types.SimpleNamespace(
         address=address,
         inputbyte=b'',
-        outputbyte=''
+        outputbyte=b''
     )
     events = selectors.EVENT_READ | selectors.EVENT_WRITE
     selector.register(connection, events, data=data)
 
 
 def service_connection(key, mask):
-    pass
+    socket = key.fileobj
+    data = key.data
+
+    if mask & selectors.EVENT_READ:
+        received_data = socket.recv(1024)
+        if received_data:
+            received_data = received_data.upper()
+            data.outputbyte += received_data
+        else:
+            print(f"Closing connection to {data.address}")
+            selector.unregister(socket)
+            socket.close()
+
+    if mask & selectors.EVENT_WRITE:
+        if data.outputbyte:
+            sent = socket.send(data.outputbyte)
+            data.outputbyte = data.outputbyte[sent:]
 
 
 if len(sys.argv) != 3:

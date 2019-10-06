@@ -6,6 +6,51 @@ import types
 selector = selectors.DefaultSelector()
 
 
+def process_argument(argument: str) -> str:
+    argument_callbacks = {
+        '--hw': get_hardware_info,
+        '--mp': get_physical_memory_info,
+        '--ms': get_swap_memory_info,
+        '--store': get_storage_info,
+        '--stat': get_connection_info,
+        '--axe': get_account_access_info,
+        '--all': get_all_info,
+    }
+    returned_info = argument_callbacks.get(
+        argument.lower(),
+        lambda: "Invalid argument"
+    )
+    return returned_info()
+
+
+def get_hardware_info() -> str:
+    pass
+
+
+def get_physical_memory_info() -> str:
+    pass
+
+
+def get_swap_memory_info() -> str:
+    pass
+
+
+def get_storage_info() -> str:
+    pass
+
+
+def get_connection_info() -> str:
+    pass
+
+
+def get_account_access_info() -> str:
+    pass
+
+
+def get_all_info() -> str:
+    pass
+
+
 def accept_wrapper(socket: socket_lib.socket):
     connection, address = socket.accept()
     print(f"Connection accepted from {address}")
@@ -26,8 +71,8 @@ def service_connection(key, mask):
     if mask & selectors.EVENT_READ:
         received_data = socket.recv(1024)
         if received_data:
-            received_data = received_data.upper()
-            data.outputbyte += received_data
+            received_data = process_argument(received_data)
+            data.outputbyte += received_data.encode('utf-8')
         else:
             print(f"Closing connection to {data.address}")
             selector.unregister(socket)

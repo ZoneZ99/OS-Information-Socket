@@ -32,7 +32,7 @@ def service_connection(key, mask):
     if mask & selectors.EVENT_READ:
         received_data = socket.recv(1024)
         if received_data:
-            print(f"Received: {repr(received_data)}")
+            print(f"Received: \n{received_data.decode('utf-8')}")
             data.received = True
 
         if not received_data or data.received:
@@ -45,7 +45,7 @@ def service_connection(key, mask):
             data.outputbyte = data.argument.encode('utf-8')
 
         if data.outputbyte and not data.sent:
-            print(f"Sending {repr(data.outputbyte)} to connection...")
+            print(f"Sending {data.outputbyte.decode('utf-8')} to connection...")
             sent = socket.send(data.outputbyte)
             data.outputbyte = data.outputbyte[sent:]
             data.sent = True

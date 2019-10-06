@@ -51,15 +51,15 @@ def service_connection(key, mask):
             data.sent = True
 
 
-if len(sys.argv) != 4:
+if len(sys.argv) < 4:
     print(
-        f"Usage: {sys.argv[0]} <host> <port> <argument>\n\
+        f"Usage: {sys.argv[0]} <host> <port> [<argument>]\n\
         Run with --help argument to see a list of available arguments"
     )
     sys.exit(1)
 
-host, port, argument = sys.argv[1:4]
-start_connection(host, int(port), argument)
+if len(sys.argv) >= 4:
+    start_connection(sys.argv[1], int(sys.argv[2]), ' '.join(sys.argv[3:]))
 
 try:
     while True:
@@ -69,6 +69,8 @@ try:
                 service_connection(key, mask)
         if not selector.get_map():
             break
+except ConnectionRefusedError:
+    print('Server is offline')
 except KeyboardInterrupt:
     print('Keyboard interrupt caught, exiting...')
 finally:

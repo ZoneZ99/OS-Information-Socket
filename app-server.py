@@ -11,7 +11,46 @@ import psutil
 from cpuinfo import get_cpu_info
 
 
+class Client:
+
+    def __init__(self, address='', command=''):
+        self.__address = address
+        self.__command = command
+
+    def get_address(self) -> str:
+        return self.__address
+
+    def set_address(self, address: str):
+        self.__address = address
+
+    def get_command(self) -> str:
+        return self.__command
+
+    def set_command(self, command: str):
+        self.__command = command
+
+
+class ClientLog:
+
+    def __init__(self):
+        self.__successful_clients = []
+        self.__unsuccessful_clients = []
+
+    def add_successful_client(self, client: Client):
+        self.__successful_clients.append(client)
+
+    def get_successful_clients(self) -> list:
+        return self.__successful_clients
+
+    def add_unsuccessful_client(self, client: Client):
+        self.__unsuccessful_clients.append(client)
+
+    def get_unsuccessful_clients(self) -> list:
+        return self.__unsuccessful_clients
+
+
 selector = selectors.DefaultSelector()
+log = ClientLog()
 
 
 def get_argument_callbacks() -> dict:
@@ -107,9 +146,23 @@ def get_connection_info() -> str:
 
 
 def get_account_access_info() -> str:
-    # TODO IMPLEMENT
-    return f"\
-        -- Access Info -- NOT IMPLEMENTED YET"
+    successful_clients = log.get_successful_clients()
+    unsuccessful_clients = log.get_unsuccessful_clients()
+    returned_output = "-- Account Access Info --\n"
+
+    if any([successful_clients, unsuccessful_clients]):
+        if any(successful_clients):
+            returned_output += "Successful clients information:\n"
+            for client in successful_clients:
+                returned_output += f"Address: {client.get_address()}, Command: {client.get_command()}\n"
+        if any(unsuccessful_clients):
+            returned_output += "Unsuccessful clients information:\n"
+            for client in unsuccessful_clients:
+                returned_output += f"Address: {client.get_address()}, Command: {client.get_command()}\n"
+    else:
+        returned_output += "No clients yet\n"
+
+    return returned_output
 
 
 def get_all_info(path: str) -> str:
@@ -134,7 +187,8 @@ def accept_wrapper(connection_socket: socket_lib.socket):
     data = types.SimpleNamespace(
         address=address,
         inputbyte=b'',
-        outputbyte=b''
+        outputbyte=b'',
+        client_object=Client(address=address)
     )
     connection_events = selectors.EVENT_READ | selectors.EVENT_WRITE
     selector.register(connection, connection_events, data=data)
@@ -147,8 +201,17 @@ def service_connection(connection_key, connection_mask):
     if connection_mask & selectors.EVENT_READ:
         received_data = connection_socket.recv(1024)
         if received_data:
-            received_data = process_argument(received_data.decode('utf-8'))
-            data.outputbyte += received_data.encode('utf-8')
+            received_data = received_data.decode('utf-8')
+            output_data = process_argument(received_data)
+
+            client_object = data.client_object
+            client_object.set_command(received_data)
+            if output_data == 'Invalid argument':
+                log.add_unsuccessful_client(client_object)
+            else:
+                log.add_successful_client(client_object)
+
+            data.outputbyte += output_data.encode('utf-8')
         else:
             print(f"Closing connection to {data.address}")
             selector.unregister(connection_socket)

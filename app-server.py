@@ -38,50 +38,54 @@ def process_argument(argument: str) -> str:
         if len(split_argument) == 2:
             return returned_info(split_argument[1])
         else:
-            return "Please specify a path"
+            return returned_info(path=".")
     else:
         return returned_info()
 
 
 def get_hardware_info() -> str:
     cpu_info = get_cpu_info()
+    default_message = "information not available"
     return f"\
         -- Hardware Info --\n\
-        Architecture: {cpu_info['arch']}\n\
-        Vendor: {cpu_info['vendor_id']}\n\
-        Brand: {cpu_info['brand']}\n\
-        Clock Speed: {cpu_info['hz_advertised']}\n\
-        L1 Cache Size: {cpu_info['l1_data_cache_size']}\n\
-        L2 Cache Size: {cpu_info['l2_cache_size']}\n\
-        L3 Cache Size: {cpu_info['l3_cache_size']}"
+        Architecture: {cpu_info.get('arch', default_message)}\n\
+        Vendor: {cpu_info.get('vendor_id', default_message)}\n\
+        Brand: {cpu_info.get('brand', default_message)}\n\
+        Clock Speed: {cpu_info.get('hz_advertised', default_message)}\n\
+        L1 Cache Size: {cpu_info.get('l1_data_cache_size', default_message)}\n\
+        L2 Cache Size: {cpu_info.get('l2_cache_size', default_message)}\n\
+        L3 Cache Size: {cpu_info.get('l3_cache_size', default_message)}"
 
 
 def get_physical_memory_info() -> str:
     virtual_memory_info = psutil.virtual_memory()
+    default_message = "information not available"
     return f"\
         -- Physical Memory Info --\n\
-        Total Capacity: {getattr(virtual_memory_info, 'total')}\n\
-        Used Capacity: {getattr(virtual_memory_info, 'used')}\n\
-        Available Capacity: {getattr(virtual_memory_info, 'available')}"
+        Total Capacity: {getattr(virtual_memory_info, 'total', default_message)}\n\
+        Used Capacity: {getattr(virtual_memory_info, 'used', default_message)}\n\
+        Available Capacity: {getattr(virtual_memory_info, 'available', default_message)}"
 
 
 def get_swap_memory_info() -> str:
     swap_memory_info = psutil.swap_memory()
+    default_message = "information not available"
     return f"\
         -- Swap Memory Info --\n\
-        Total Capacity: {getattr(swap_memory_info, 'total')}\n\
-        Used Capacity: {getattr(swap_memory_info, 'used')}\n\
-        Available Capacity: {getattr(swap_memory_info, 'free')}"
+        Total Capacity: {getattr(swap_memory_info, 'total', default_message)}\n\
+        Used Capacity: {getattr(swap_memory_info, 'used', default_message)}\n\
+        Available Capacity: {getattr(swap_memory_info, 'free', default_message)}"
 
 
 def get_storage_info(path: str) -> str:
     try:
         disk_usage = psutil.disk_usage(path)
+        default_message = "information not available"
         return f"\
-            -- Storage Usage of {path} --\n\
-            Total Capacity: {getattr(disk_usage, 'total')}\n\
-            Used Capacity: {getattr(disk_usage, 'used')}\n\
-            Available Capacity: {getattr(disk_usage, 'free')}"
+        -- Storage Usage of {path} --\n\
+        Total Capacity: {getattr(disk_usage, 'total', default_message)}\n\
+        Used Capacity: {getattr(disk_usage, 'used', default_message)}\n\
+        Available Capacity: {getattr(disk_usage, 'free', default_message)}"
     except FileNotFoundError:
         return f"\
             -- Storage Usage of {path} --\n\
@@ -103,6 +107,7 @@ def get_connection_info() -> str:
 
 
 def get_account_access_info() -> str:
+    # TODO IMPLEMENT
     return f"\
         -- Access Info -- NOT IMPLEMENTED YET"
 
@@ -122,8 +127,8 @@ def get_all_info(path: str) -> str:
     return returned_info
 
 
-def accept_wrapper(socket: socket_lib.socket):
-    connection, address = socket.accept()
+def accept_wrapper(connection_socket: socket_lib.socket):
+    connection, address = connection_socket.accept()
     print(f"Connection accepted from {address}")
     connection.setblocking(False)
     data = types.SimpleNamespace(
@@ -131,27 +136,27 @@ def accept_wrapper(socket: socket_lib.socket):
         inputbyte=b'',
         outputbyte=b''
     )
-    events = selectors.EVENT_READ | selectors.EVENT_WRITE
-    selector.register(connection, events, data=data)
+    connection_events = selectors.EVENT_READ | selectors.EVENT_WRITE
+    selector.register(connection, connection_events, data=data)
 
 
-def service_connection(key, mask):
-    socket = key.fileobj
-    data = key.data
+def service_connection(connection_key, connection_mask):
+    connection_socket = connection_key.fileobj
+    data = connection_key.data
 
-    if mask & selectors.EVENT_READ:
-        received_data = socket.recv(1024)
+    if connection_mask & selectors.EVENT_READ:
+        received_data = connection_socket.recv(1024)
         if received_data:
             received_data = process_argument(received_data.decode('utf-8'))
             data.outputbyte += received_data.encode('utf-8')
         else:
             print(f"Closing connection to {data.address}")
-            selector.unregister(socket)
-            socket.close()
+            selector.unregister(connection_socket)
+            connection_socket.close()
 
-    if mask & selectors.EVENT_WRITE:
+    if connection_mask & selectors.EVENT_WRITE:
         if data.outputbyte:
-            sent = socket.send(data.outputbyte)
+            sent = connection_socket.send(data.outputbyte)
             data.outputbyte = data.outputbyte[sent:]
 
 

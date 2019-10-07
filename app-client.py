@@ -30,7 +30,7 @@ def service_connection(connection_key, connection_mask):
     data = connection_key.data
 
     if connection_mask & selectors.EVENT_READ:
-        received_data = socket.recv(1024)
+        received_data = socket.recv(4096)
         if received_data:
             print(f"Received: \n{received_data.decode('utf-8')}")
             data.received = True
